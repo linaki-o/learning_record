@@ -916,8 +916,13 @@ Neural style transfer: 根据照片生成不同风格的图片
 fully connected nn:
 - input: one dimensional sequence
 - 应用于CV的问题:
-  - 失去了位置信息
+  - 失去了位置空间信息
   - 参数太多了
+
+convolutional layer的优势：
+- 参数少了
+  - Param sharing
+  - sparsity of connections: neuron connect patches of input. Only "sees" these values
 > Convolution operation
 
 using spatial structure
@@ -938,7 +943,7 @@ image * filter = feature map
 学习生成这些filter于是就推出了Convolutional Neural Networks
 <img src="./img/cnn3.png">
 
-filter可以有很多deep
+filter的数量就是next的deepth
 <img src="./img/cnn4.png">
 
 > Padding
@@ -956,7 +961,27 @@ filter matric 通常是维度是奇数的
 - 确保padding可以对称
 - 有个中心点
 
+> strided convolution
 
+feature map的矩阵维度计算 我不想记 用到再说吧 非整时向下取整
+
+<img src="./img/cnn_notions.png">
+
+前面我们用的convolution operation实际上是cross-correlation
+严格的convolution operation应该在最开始做一次镜像操作 即对/对角线进行镜像 为了结合律 (A*B)*C = A*(B*C)
+
+> convolution over volumes
+img: height:weight:channel
+和2d没有实质上的区别，就是filter也变3d了，然后3d范畴的操作
+
+multiple filters: 对input做多次convolution operate然后将feature map堆叠起来成x*x*num of filters的cube
+
+第三维度：channel或depth
+
+卷积网络其实是用来训练filter的以便可以更好的提取出特征
+- 不管你图像多大 参数是确定的 就是filter的个数*维度 可以避免过拟合
+
+一些符号标注都挺好理解的 没记
 
 > non-linear operation ReLu apply after every convolution operation
 
@@ -964,11 +989,13 @@ ReLu为什么这么流行
 ```
 ReLU（Rectified Linear Unit）函数在卷积神经网络（CNNs）中很流行，主要有以下几个原因：
 
+mitigate the vanishing gradient problem
+
 非线性： ReLU 是一个非线性函数，它能够引入非线性特征映射到神经网络中。这种非线性可以帮助网络学习更加复杂的函数关系，从而提高模型的表达能力。
 
 稀疏激活性： 当输入为负数时，ReLU 的输出为零，这意味着它对负值进行了阈值化处理。这种稀疏激活性有助于减少梯度消失问题，因为它可以使部分神经元处于非活跃状态，从而缓解了梯度的衰减。
 
-计算效率： ReLU 函数的计算简单高效，它只需要比较输入是否大于零并返回相应的值。与其他激活函数相比，如 Sigmoid 和 Tanh 函数，ReLU 函数的计算更加轻量级，有助于加速模型的训练和推断。导数是常数很简单 梯度下降也很快
+计算效率： ReLU 函数的计算简单高效，它只需要比较输入是否大于零并返回相应的值。与其他激活函数相比，如 Sigmoid 和 Tanh 函数，ReLU 函数的计算更加轻量级，有助于加速模型的训练和推断。导数是常数很简单好算 斜率大梯度下降也很快
 
 抑制过拟合： 由于 ReLU 函数的稀疏激活性质，它能够在一定程度上对网络进行正则化，有助于防止过拟合的发生。
 
@@ -983,14 +1010,128 @@ max pool with 2*2 filter and stride 2
 
 mean pooling, average pooling
 
+pooling的超参数不需要学习
+
 > 总结
 
 通过一次又一次的使用来获取hierarchical decompositions of features
+
+用文献中表现较好的超参数以及架构
 
 <img src="./img/cnn5.png">
 
 probability distribution properties:(不就概率分布吗 性质我还是记得的)
 <img src="./img/cnn6.png">
+
+这个架构类似于LeNet-5
+```
+LeNet-5 was introduced in 1998 by Yann LeCun, Leon Bottou, Yoshua Bengio, and Patrick Haffner
+
+The architecture was initially designed for recognizing handwritten digits and document recognition, showcasing the power of gradient-based learning techniques
+```
+> LeNet-5
+
+
+给我们的知识就是引入了类似上面的简单架构
+
+精读section 2，泛读3
+其他段讲了一些思路现在都还没应用起来(graph transformer network)
+
+> Alexnet
+
+https://www.analyticsvidhya.com/blog/2021/03/introduction-to-the-architecture-of-alexnet/
+
+innovation:
+- Depth of the Model:  eight layers, including five convolutional layers and three fully connected layers. similarity to LeNet-5, but much bigger. 
+- Utilization of GPUs: use multiple GPUs
+- 用了ReLu: mitigate the vanishing gradient problem and improved both training performance and computational efficiency compared to traditional activation functions like tanh and sigmoid
+- Data Augmentation and Dropout
+- Overlapping Max Pooling
+
+
+new type of layer: local response normalization
+
+
+
+
+> VGG-16
+
+innovation
+- Increased Depth and Layer Configuration:  utilizing 16 layers (hence the name) with 13 convolutional layers and 3 fully connected layers
+- Use of Small Filter Sizes: consistent use of small 3x3 filter sizes throughout the network, replacing larger kernel sizes used in previous architectures like AlexNet. 
+- Standardized Architecture: 每次conv都使depth翻倍，每次pooling都使H&W/2
+
+Its pre-trained models have been widely used as a starting point for new projects, accelerating model development and deployment
+
+
+> ResNet: residual network
+
+deep的NN不好训练: gradient explode or gradient vanish
+
+skip connections: learning functions as F(x) + x instead of just F(x). 
+
+residual block: which consist of convolutional layers followed by batch normalization and ReLU activation functions. 
+plain network + skip connection = ResNet
+
+矩阵维度不同时再加一个Weight Matrix
+
+> Inception network/layer
+
+让网络学习filter的size以及combination
+
+可以使用1*1 conv来降低depth，然后再复原，这样可以减少计算开销，而通过1*1conv生成的layer也被称为`bottleneck layer`
+
+don't want to have to decide what size of pooling layers to use, inception module, says, let's do them all and concatenate the results.
+
+<img src="./img/inception1.png">
+
+<img src="./img/inception2.png">
+
+inception现在发展了很多版本
+
+学习整合模块的方法：大量读文献
+
+可以去github上看看一些NN的开源实现，并以此为基础
+
+> 1 * 1 conV
+
+对于3d conv比较有用 其实有点像fully connected 增加了一个非线性函数 然后保持数据维度不变
+也叫network in network
+
+可以用来降低计算维度
+
+> transfer learning
+
+imageNet
+
+特征向量
+
+根据自己数据集的大小freeze一些layer，train一些layer
+
+> data augmentation
+
+common augmentation method:
+- mirroring
+- random cropping
+- rotation
+- shearing
+- local warping 
+
+color shifting: "PCA color augmentation"
+
+implementing distortions during training: 用线程
+
+也有一些超参数
+
+> 现状
+
+two sources of knowledge
+- labeled data(supervise learning)
+- hand engineered features/network architecture/other components
+
+tips for doing well on benchmarks
+- ensembling: 训练多个网络对结果取平均值
+- multi-crop at test time: run classifier on multiple versions of test images and average results 
 
 > Object Detection
 
@@ -1072,9 +1213,30 @@ Autoencoders是一种神经网络架构，它们被用来学习如何有效地�
 
 <img src="./img/gm1.png">
 
-variational autoencoders(VAEs)
+deterministic
+
+encoder: 包含一些hidden layer可以是fully connected，或convolutional
+bottleneck: 就是低维数据 latent space representation. dimension 不同时有着不同的效果 dimension越多越精确
+decoder: 
+
+data specific, learned compression
+
+denoising autoencoder: 为了将noisy input reconstruct为denoised image
+
+neural impeding
+
+variational autoencoders(VAEs)  bottleneck不再是vector了而是distribution variational指会生成new images similar to the data but not forced to be strict reconstructions
 <img src="./img/gm2.png">
+<!-- <img src="./img/gm4.png"> -->
+<img src="./img/gm5.png">
+
+trying to enforce that each of those latent variables adapts a probabilities distribution that's similar to that prior. 一般是正则高斯分布
+
+<img src="./img/gm6.png">
+<img src="./img/gm7.png">
+
 <img src="./img/gm3.png">
+
 ```
 当我们训练Variational Autoencoders（VAEs）时，我们希望模型学会将输入数据映射到一个潜在空间中，并且这个潜在空间的分布要符合某种我们预先设定的标准，比如高斯分布。KL散度损失用来度量模型学习到的潜在空间的分布与我们期望的标准分布之间的差异。
 
@@ -1084,4 +1246,44 @@ KL散度损失就是用来衡量这种差异的。它会计算模型学习到的
 
 总的来说，KL散度损失就是帮助模型学会将学到的潜在表示分布调整为我们期望的标准分布，从而提高模型的性能和可解释性。
 ```
-<img src="./img/gm4.png">
+problem: 通过mean vector以及standard deviation vector生成sampled latent vector，不能对sampled latent vector使用back propagation
+
+reparameterization trick:
+<img src="./img/gm8.png">
+
+<img src="./img/vae2.png">
+<img src="./img/vae3.png">
+
+<img src="./img/gm9.png">
+
+
+disentangled VAEs: different neurons in latent distribution are uncorrelated and all try learn something different. 当loss function加上β参数后
+
+<img src="./img/gm10.png">
+
+公式有点不一致啊 得确认一下: 课上的公式才是正确的
+
+<img src="./img/gm11.png">
+
+### GANs(Generative Adversarial Networks)
+
+<img src="./img/gans1.png">
+
+那其实直接最终目的是生成和real data一模一样的数据，但其实我们只是学习其中的权重关系罢了，最终我们可以制造不同的input输入
+
+<img src="./img/gans2.png">
+nn.BCELoss 代表输入的input已经做过sigmoid
+<img src="./img/gans3.png">
+
+超分辨率重构
+
+Discriminator network的loss有两部分，分别是与fake的比以及与true的比
+> Advance 
+
+progressive growing of GANs: 增加layer num
+
+conditional GANs and pix2pix: paired translation
+
+CycleGAN: domain transformation unpaired data
+
+**Diffusion Models** 近年来最火的model, 更有想象力了，我们与机器的不同其实就是想象力

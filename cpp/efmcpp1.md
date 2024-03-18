@@ -441,3 +441,39 @@ auto funcA = std::bind(func, 5, std::placeholders::_1, 10); // 傻傻分不清�
 4. 合理使用std::bind的情况
 - c++11不提供移动捕获，可使用lambda与bind相结合
 - c++11中bind对象上的函数调用运算符使用完美转发，可接受任意参数，lambda不行，当时lambda还不接受auto类型参数呢
+
+# 条款42：考虑使用置入替代插入
+
+```cpp
+std::vector<Widget> vec;
+/*
+    先用10构造一个Widget临时变量tmp
+    把tmp移动进去
+    tmp被销毁
+*/
+vec.push_back(10); 
+/*
+    直接在vec的位置构造 更优
+*/
+vec.emplace_back(10); 
+```
+
+置入比插入性能好的条件
+- 值是用构造函数添加到容器中，而不是直接赋值
+- 传递的实参类型与容器的元素类型不同
+- 容器不拒绝重复项作为新值
+
+用置入可能引发的内存泄漏
+```cpp
+std::list<std::shared_ptr<Test>> ptrs;
+ptrs.emplace_back(new Test(10), killTest);
+/*
+执行new Test(10);
+list内部申请一块内存（若异常会造成内存泄漏）
+在这块内存上构造shared_ptr<Test>
+*/
+
+为什么emplace_back不能用{}构造: 因为模板推导不出{}构造的对象
+
+与explicit构造函数的交互
+- 这种情况下push_back用不了
